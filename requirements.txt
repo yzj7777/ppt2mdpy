@@ -1,0 +1,8 @@
+python-pptx
+Pillow
+transformers>=4.45.0
+accelerate
+peft
+pymupdf
+bitsandbytes
+huggingface_hub
