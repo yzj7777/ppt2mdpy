@@ -27,8 +27,13 @@ def evaluate_model_pipeline(eval_model, eval_processor, val_jsonl):
     eval_model.eval()
 
     print(f"📐 针对 {len(val_items)} 个样本执行推理指标分析...")
+    from config import PNG_DIR  # 动态引入
     for idx, item in enumerate(val_items):
-        image = Image.open(item["image"]).convert("RGB")
+        # 【动态路径解析】提取文件名并与本地 PNG_DIR 重组
+        filename = os.path.basename(item["image"])
+        actual_image_path = os.path.join(PNG_DIR, filename)
+
+        image = Image.open(actual_image_path).convert("RGB")
         gt_text = normalize(item["text"])
 
         start = time.time()

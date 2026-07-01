@@ -1,11 +1,19 @@
 import os
 import datetime
 
+# ==================== 基础目录自适应配置 ====================
 # 限制 CUDA 显存碎片，提高显存复用效率，防止碎片化引起的 OOM
 os.environ["PYTORCH_CUDA_ALLOC_CONF"] = "expandable_segments:True"
 
-# 本地工作区与缓存目录设置（默认设为项目下的 workspace）
-BASE_DIR = os.getenv("WORKSPACE_DIR", "./workspace")
+# 自动识别 Kaggle 环境，统一解析为绝对路径
+IS_KAGGLE = os.path.exists("/kaggle/working")
+if IS_KAGGLE:
+    # 强制将 Kaggle 下的根文件夹指到绝对路径，避免 git 克隆子目录切换导致相对路径失效
+    DEFAULT_BASE_DIR = "/kaggle/working/workspace"
+else:
+    DEFAULT_BASE_DIR = "./workspace"
+
+BASE_DIR = os.path.abspath(os.getenv("WORKSPACE_DIR", DEFAULT_BASE_DIR))
 PDF_DIR = os.path.join(BASE_DIR, "pdfs")
 PNG_DIR = os.path.join(BASE_DIR, "slides_png")
 GT_DIR  = os.path.join(BASE_DIR, "ground_truth")

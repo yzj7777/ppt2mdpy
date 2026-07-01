@@ -184,22 +184,10 @@ def extract_and_align_local_pptx(pptx_files):
         print(f"⚠️ 数据集云端备份上传失败 (原因: {e})")
 
 def execute_data_pipeline(local_input_dir=None):
-    """数据准备的主控调度函数"""
+    """数据准备的主控调度函数（优先支持 Kaggle 本地 PPTX 数据集解析）"""
     prepare_directories()
 
-    # 如果本地已经有完整的切分结构则直接放行
-    if (os.path.exists(TRAIN_JSONL) and 
-        os.path.exists(VAL_JSONL) and 
-        os.path.exists(PNG_DIR) and 
-        len(os.listdir(PNG_DIR)) > 0):
-        print("✅ 本地已检测到现成数据集（JSONL与PNG），跳过预处理环节。")
-        return
-
-    # 尝试云端拉取
-    if retrieve_cloud_dataset():
-        return
-
-    # 兜底本地转换
+    # 1. 优先扫描 Kaggle 挂载目录（或用户指定目录），递归搜寻 PPTX 原始文件
     pptx_files = []
     search_dir = local_input_dir or "/kaggle/input"
     if os.path.exists(search_dir):
@@ -208,12 +196,30 @@ def execute_data_pipeline(local_input_dir=None):
                 if f.endswith(".pptx"):
                     pptx_files.append(os.path.join(dirpath, f))
 
-    if not pptx_files:
-        backup_local = os.path.join(BASE_DIR, "sample_pptx")
-        if os.path.exists(backup_local):
-            pptx_files = [os.path.join(backup_local, f) for f in os.listdir(backup_local) if f.endswith('.pptx')]
-
+    # 2. 如果检测到本地有原始 PPTX，则优先执行本地解析转换，不下载云端旧备份
     if pptx_files:
+        # 如果本地已经有转换好的结果，则直接放行，避免重复耗时转换
+        if (os.path.exists(TRAIN_JSONL) and 
+            os.path.exists(VAL_JSONL) and 
+            os.path.exists(PNG_DIR) and 
+            len(os.listdir(PNG_DIR)) > 0):
+            print("✅ 本地已检测到现成切分数据集（JSONL与PNG），跳过解析转换。")
+            return
+
+        print(f"🚀 成功检测到本地 PPTX 原始文件共 {len(pptx_files)} 个。开始启动图文原生抽取与渲染流程...")
         extract_and_align_local_pptx(pptx_files)
-    else:
-        raise FileNotFoundError("❌ 数据路径中缺少 PPTX 文件。")
+        return
+
+    # 3. 只有在本地检测不到 PPTX 时，才降级尝试拉取云端旧数据集作为兜底
+    print("⚠️ 本地未检索到 PPTX 原始文件。正在尝试从云端拉取备份数据...")
+    if (os.path.exists(TRAIN_JSONL) and 
+        os.path.exists(VAL_JSONL) and 
+        os.path.exists(PNG_DIR) and 
+        len(os.listdir(PNG_DIR)) > 0):
+        print("✅ 本地已检测到拉取好的云端备份数据集（JSONL与PNG），跳过下载。")
+        return
+
+    if retrieve_cloud_dataset():
+        return
+
+    raise FileNotFoundError("❌ 无法准备数据集：本地未扫描到 PPTX 原始文件，且云端没有可用备份。")

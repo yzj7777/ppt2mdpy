@@ -18,7 +18,13 @@ class SlideDataset(torch.utils.data.Dataset):
 
     def __getitem__(self, idx):
         sample = self.samples[idx]
-        image = Image.open(sample["image"]).convert("RGB")
+
+        # 【动态重构路径】提取文件名并结合当前配置的绝对 PNG_DIR 路径，防止路径写死冲突
+        from config import PNG_DIR
+        filename = os.path.basename(sample["image"])
+        actual_image_path = os.path.join(PNG_DIR, filename)
+
+        image = Image.open(actual_image_path).convert("RGB")
         return [
             {
                 "role": "user",
